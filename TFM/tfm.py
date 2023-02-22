@@ -6,7 +6,8 @@ from itertools import combinations
 import matplotlib.pyplot as plt
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.metrics import balanced_accuracy_score
+from sklearn.metrics import balanced_accuracy_score, mean_absolute_error, mean_absolute_percentage_error, \
+    mean_squared_error
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.svm import SVC
@@ -27,8 +28,7 @@ class DataTFM():
         # st.write(st.session_state)
 
         # "st session: ",  st.session_state
-        st.image("https://www.codificandobits.com/img/cb-logo.png", width=200)
-        st.title("Interfaz para predecir datos")
+        st.title(" Interfaz en Streamlit para realizar predicciones")
         self.container = st.container()
 
         uploaded_file = self.container.file_uploader(
@@ -48,8 +48,9 @@ class DataTFM():
             self.select_prediction()
 
     def select_prediction(self):
-        self.type_prediction = st.radio('Seleccione si desea hacer una clasificación o una regresión', ['None', 'Clasificación', 'Regresión'], key='selectbox_tipo')
-        if self.type_prediction:
+        self.type_prediction = st.radio('Seleccione si desea hacer una clasificación o una regresión',
+                                        ['None', 'Clasificación', 'Regresión'], key='selectbox_tipo')
+        if self.type_prediction != 'None':
             self.predict_variable()
         else:
             st.warning('Seleccione el tipo de predicción a realizar')
@@ -119,49 +120,50 @@ class DataTFM():
         self.init_buttons()
 
         if self.pred_variable is not None:
-            st.success('La variable para realizar la predicción seleccionada es: ' + self.pred_variable)
-            if st.button('Mostrar datos', key='mostrar_datos') or st.session_state["clicked_mostrar_datos"]:
-                st.session_state["clicked"] = True
-                st.session_state["clicked_mostrar_datos"] = True
-                st.session_state["selected_var_pred"] = True
+            if (self.type_prediction == 'Clasificación' and 'str' in str(type(self.data[self.pred_variable][0]))) or (self.type_prediction == 'Clasificación' and self.num_unique_values == 2) or (self.type_prediction == 'Regresión' and ('float' in str(type(self.data[self.pred_variable][0]))) or 'int' in 'int' in str(type(self.data[self.pred_variable][0]))):
+                st.success('La variable para realizar la predicción seleccionada es: ' + self.pred_variable)
+                if st.button('Mostrar datos', key='mostrar_datos') or st.session_state["clicked_mostrar_datos"]:
+                    st.session_state["clicked"] = True
+                    st.session_state["clicked_mostrar_datos"] = True
+                    st.session_state["selected_var_pred"] = True
 
-                self.list_variables = list(self.data.columns)
+                    self.list_variables = list(self.data.columns)
 
-                if self.type_prediction:
-                    self.show_data()
-                else:
-                    st.warning('Seleccione el tipo de predicción a realizar')
+                    if self.type_prediction:
+                        self.show_data()
+                    else:
+                        st.warning('Seleccione el tipo de predicción a realizar')
 
-                if st.button('Ver gráficas', key='ver_graficas') or st.session_state["clicked_ver_graficas"]:
-                    st.session_state['clicked_ver_graficas'] = True
-                    if self.pred_variable in self.variables:
-                        self.variables.remove(self.pred_variable)
+                    if st.button('Ver gráficas', key='ver_graficas') or st.session_state["clicked_ver_graficas"]:
+                        st.session_state['clicked_ver_graficas'] = True
+                        if self.pred_variable in self.variables:
+                            self.variables.remove(self.pred_variable)
 
-                    options = st.multiselect(label='Seleccionar las diferentes variables para realizar las gráficas', options=self.variables)
-                    self.graph_combinations = list(combinations(options, 2))
-                    # n_combinaciones = len(self.combinaciones_graficas)
+                        options = st.multiselect(label='Seleccionar las diferentes variables para realizar las gráficas'
+                                                 , options=self.variables)
 
-                    # self.lista_images = []
-                    # self.rows = 2
-                    # self.columns = 1 if int(np.round(n_combinaciones / 2)) == 0 else int(np.round(n_combinaciones / 2))
+                        self.graph_combinations = list(combinations(options, 2))
 
-                    st.markdown('Se va a hacer un plot de las diferentes clasificaciones')
+                        st.markdown('Se va a hacer un plot de las diferentes clasificaciones')
 
-                    if self.type_prediction == 'Clasificación':
-                        self.classification_graphs()
+                        if self.type_prediction == 'Clasificación':
+                            self.classification_graphs()
 
-                    elif self.type_prediction == 'Regresión':
-                        self.regression_graphs()
+                        elif self.type_prediction == 'Regresión':
+                            self.regression_graphs()
 
-                if st.button('Realizar predicciones', key='realizar_predicciones') or st.session_state[
-                    'clicked_realizar_predicciones']:
-                    st.session_state['clicked_realizar_predicciones'] = True
+                    if st.button('Realizar predicciones', key='realizar_predicciones') or st.session_state[
+                        'clicked_realizar_predicciones']:
+                        st.session_state['clicked_realizar_predicciones'] = True
 
-                    if self.type_prediction == 'Clasificación':
-                        self.select_type_classifier()
+                        if self.type_prediction == 'Clasificación':
+                            self.select_type_classifier()
 
-                    elif self.type_prediction =='Regresión':
-                        self.select_type_regression()
+                        elif self.type_prediction =='Regresión':
+                            self.select_type_regression()
+
+            else:
+                st.error('Variable no permitida en esta predicción')
 
     def classification_graphs(self):
         tab1, tab2, tab3 = st.tabs(["Matriz correlación", "FacetGrid", "Violinplot"])
@@ -175,48 +177,61 @@ class DataTFM():
             self.violinplot()
     
     def regression_graphs(self):
-        tab1, tab2, tab3 = st.tabs(["Matriz correlación", "Boxplot", "Violinplot"])
+        tab1, tab2, tab3 = st.tabs(["Matriz correlación", "Boxplot", "Distplot"])
         with tab1:
             self.matriz_correlation()
         with tab2:
             self.boxplot()
-
-        # with tab3:
-        #     self.violinplot()
+        with tab3:
+            self.distplot()
 
     def change_variable_pred_int_to_str(self):
         if self.pred_variable:
             self.unique_values = np.unique(self.data[self.pred_variable])
 
-            if len(self.unique_values) == 2:
+            if len(self.unique_values) == 2 and str(self.unique_values[0]).isdigit():
                 for i in self.unique_values:
                     value = st.text_input(f"Inserte valor para {i}: ")
                     self.data[self.pred_variable] = self.data[self.pred_variable].replace({i: value})
 
-    def boxplot(self):
-        opcion_plot = st.selectbox('Seleccione la variable para mostrar el violinplot', self.variables)
+    def distplot(self):
+        option_plot = st.selectbox('Seleccione la variable para mostrar el distplot', self.variables)
 
-        if opcion_plot:
+        if option_plot:
             c1, c2, c3 = st.columns([2, 2, 2])
 
             with c2:
                 fig, ax = plt.subplots()
-                if 'str' in str(type(self.data[opcion_plot][0])):
+                if 'str' in str(type(self.data[option_plot][0])):
                     st.error('Variable no numérica')
                 else:
-                    sns.boxplot(data=self.data, x=opcion_plot, ax=ax)
+                    sns.distplot(self.data[option_plot], ax=ax).set(title=f'Displot de {option_plot}')
+                    st.write(fig)
+
+    def boxplot(self):
+        option_plot = st.selectbox('Seleccione la variable para mostrar el boxplot', self.variables)
+
+        if option_plot:
+            c1, c2, c3 = st.columns([2, 2, 2])
+
+            with c2:
+                fig, ax = plt.subplots()
+                if 'str' in str(type(self.data[option_plot][0])):
+                    st.error('Variable no numérica')
+                else:
+                    sns.boxplot(data=self.data, x=option_plot, ax=ax).set(title=f'Boxplot de {option_plot}')
                     st.write(fig)
 
     def violinplot(self):
         if 'str' in str(type(self.data[self.pred_variable][0])):
-            opcion_plot = st.selectbox('Seleccione la variable para mostrar el violinplot', self.variables)
+            option_plot = st.selectbox('Seleccione la variable para mostrar el violinplot', self.variables)
 
-            if opcion_plot:
+            if option_plot:
                 c1, c2, c3 = st.columns([2, 2, 2])
 
                 with c2:
                     fig, ax = plt.subplots()
-                    sns.violinplot(data=self.data, x=opcion_plot, y=self.pred_variable, inner="stick", ax=ax)
+                    sns.violinplot(data=self.data, x=option_plot, y=self.pred_variable, inner="stick", ax=ax).set(title=f'Violinplot de {option_plot}')
                     st.write(fig)
 
         else:
@@ -242,7 +257,7 @@ class DataTFM():
                                                                                         selection[1]).add_legend()
 
                     g.fig.suptitle(f'Clasificación de {self.pred_variable} según {selection[0]}-{selection[1]}',
-                                   fontsize=10)
+                                   fontsize=5)
                     st.pyplot(g)
 
         else:
@@ -380,12 +395,12 @@ class DataTFM():
             st.error('Debe seleccionar un regresor')
 
         else:
-            self.show_inputs()
             if option == 'Regresión Lineal':
                 self.linear_regression()
 
             elif option == 'KN Regresor':
                 self.knregressor()
+
             # elif opcion == 'KNN':
             #     self.knn()
 
@@ -399,7 +414,8 @@ class DataTFM():
                 value = st.number_input(f"Inserte {k}. Sus posibles valores son {list(possible_values)}: ")
                 norm_value = self.dict_scaler[k].transform(pd.DataFrame([value]))[0][0]
                 self.norm_values[k] = norm_value
-            if v == 'float':
+
+            elif v == 'float':
                 value = st.number_input(f"Inserte {k}: ")
                 norm_value = self.dict_scaler[k].transform(pd.DataFrame([value]))[0][0]
                 self.norm_values[k] = norm_value
@@ -439,6 +455,8 @@ class DataTFM():
         if n_neighbors:
             knr = KNeighborsRegressor(n_neighbors=n_neighbors)
             knr.fit(self.X_train, self.Y_train)
+            self.error_regression(knr)
+            self.show_inputs()
             self.get_result(knr)
 
     def percentage_accuracy(self, acc):
@@ -462,9 +480,20 @@ class DataTFM():
         elif accuracy < 0.6:
             st.error(f'Se ha conseguido una accuracy del {self.percentage_accuracy(accuracy)}')
 
+    def error_regression(self, clf):
+        y_pred = clf.predict(self.X_test)
+        y_test = self.Y_test
+        mae = mean_absolute_error(y_test, y_pred)
+        mape = mean_absolute_percentage_error(y_test, y_pred)
+        mse = mean_squared_error(y_test, y_pred)
+        st.info(f'El MAE es: {mae}')
+        st.info(f'El MAPE es: {mape}')
+        st.info(f'El MSE es: {mse}')
+
     def svc(self):
         self.classifier = 'svc'
-        svc = SVC()
+        kernel = st.selectbox('Seleccione el kernel a introducir: ', ['rbf', 'linear', 'poly', 'sigmoid'])
+        svc = SVC(kernel=kernel)
         self.Y_train = [self.key_from_value(self.mapping, np.argmax(x)) for x in self.Y_train]
         self.Y_test = [self.key_from_value(self.mapping, np.argmax(x)) for x in self.Y_test]
 
@@ -478,6 +507,8 @@ class DataTFM():
         lin_reg = LinearRegression()
 
         lin_reg.fit(self.X_train, self.Y_train)
+        self.error_regression(lin_reg)
+        self.show_inputs()
         self.get_result(lin_reg)
 
     def logistic_regression(self):
